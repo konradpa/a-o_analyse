@@ -53,19 +53,27 @@ clean_data_self <- function(df) {
 
 clean_data_external <- function(df) {
   # Rename columns
-  colnames(df) <- c("Rating_Type", "mean_first_5_minutes", "mean_second_5_minutes", "mean_third_5_minutes", "mean_fourth_5_minutes", "mean_total", "SD")
+  colnames(df) <- c("variable", "mean_erste_minuten", "mean_zweite_minuten",  "mean_dritte_minuten", 
+                    "mean_vierte_minuten", "mean_gesamt", "SD" )
   
   # Remove rows with missing values in the 'mean_total' column
-  df <- df[complete.cases(df$mean_total), ]
+  df <- df[complete.cases(df$mean_gesamt), ]
+  
+  # Remove the first row
+  df <- df[-1,]
   
   # Convert 'mean' and 'SD' columns to numeric
   df[, 2:7] <- lapply(df[, 2:7], as.numeric)
   
-  # Assign specific names to the "Rating_Type" column
-  df$Rating_Type <- c("Entitativity", "Similarity", "Interactivity", "Shared Goals")
+  specific_names <- c("Entitativität", "Ähnlichkeit", "Interaktivität", "Geteilte Ziele")
+  df$variable <- specific_names
   
-  return(df)
+
+  
+  return(as.data.frame(df))
+  
 }
+
 
 # Load required library
 library(readxl)
@@ -94,19 +102,12 @@ clean_data_interact <- function(file_path) {
 
 # Function to do t tests
 perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self, rows_external, alpha = 0.05) {
-  # Extract variable names
-  variable_names_self <- dataframe_self[rows_self, "variable"]
-  variable_names_external <- dataframe_external[rows_external, "variable"]
+  # Check if lengths of rows_self and rows_external are equal
+  if (length(rows_self) != length(rows_external)) {
+    stop("Lengths of rows_self and rows_external must be equal.")
+  }
   
-  # Extract mean and standard deviation values from dataframe_self
-  mean_self <- dataframe_self[rows_self, "mean_gesamt"]
-  sd_self <- dataframe_self[rows_self, "SD"]
-  
-  # Extract mean and standard deviation values from dataframe_external
-  mean_external <- dataframe_external[rows_external, "mean_gesamt"]
-  sd_external <- dataframe_external[rows_external, "SD"]
-  
-  # Initialize table to store results
+  # Initialize results table
   results_table <- data.frame(Category = character(length(rows_self)),
                               Variable = character(length(rows_self)),
                               T_statistic = numeric(length(rows_self)),
@@ -115,24 +116,44 @@ perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self
                               Hypothesis_conclusion = character(length(rows_self)),
                               P_value = numeric(length(rows_self)))
   
+  # Loop through each row
   for (i in 1:length(rows_self)) {
-    # Calculate the differences between self-ratings and external ratings
-    difference <- mean_self[i] - mean_external[i]
+    # Extract data for the current row
+    variable_name <- dataframe_self[rows_self[i], "variable"]
+    mean_self <- as.numeric(dataframe_self[rows_self[i], "mean_gesamt"]) # Ensure numeric type
+    mean_external <- as.numeric(dataframe_external[rows_external[i], "mean_gesamt"]) # Ensure numeric type
+    sd_self <- as.numeric(dataframe_self[rows_self[i], "SD"]) # Ensure numeric type
+    sd_external <- as.numeric(dataframe_external[rows_external[i], "SD"]) # Ensure numeric type
     
-    # Calculate the standard deviation of the differences
-    SD_d <- sqrt((sd_self[i]^2 + sd_external[i]^2)/3)
+    # Print extracted data
+    print(variable_name)
+    print(mean_self)
+    print(mean_external)
+    print(sd_self)
+    print(sd_external)
+    
+    # Calculate the difference in means
+    difference <- mean_self - mean_external
+    print(difference)
+    
+    # Calculate the standard deviation of the differences 
+    SD_d<-sqrt((sd_self^2 + sd_external^2) / 3)
+    print(SD_d)
     
     # Calculate the standard error of the mean difference
     SE_d <- SD_d / sqrt(3)
+    print(SE_d)
     
     # Calculate the t-statistic
     t_statistic <- difference / SE_d
+    print(t_statistic)
     
     # Determine the degrees of freedom
     df <- 2
     
     # Find the critical t-value
     critical_t <- qt(1 - alpha / 2, df)
+    print(critical_t)
     
     # Compare the t-statistic to the critical t-value
     if (abs(t_statistic) > critical_t) {
@@ -143,10 +164,11 @@ perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self
     
     # Calculate the p-value
     p_value <- 2 * pt(abs(t_statistic), df, lower.tail = FALSE)
+    print(p_value)
     
     # Store the results in the table
     results_table[i, ] <- list(Category = rownames(dataframe_self)[rows_self[i]],
-                               Variable = variable_names_self[i],
+                               Variable = variable_name,
                                T_statistic = t_statistic,
                                Degrees_of_freedom = df,
                                Critical_t_value = critical_t,
@@ -154,9 +176,11 @@ perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self
                                P_value = p_value)
   }
   
-  # Print the results table
-  print(knitr::kable(results_table, format = "markdown"))
+  # Return the results table
+  return(results_table)
 }
+
+
 
 
 # Cohens D

@@ -12,9 +12,9 @@ library(tidyr)
 library(broom)
 library("readxl")
 
-vr_group1 <- read_excel("Daten/Fragebogendaten_Mittelwerte_Seminar_B_Team_1.xlsx", sheet = "VR_Meeting")
+vr_self <- read_excel("Daten/Fragebogendaten_Mittelwerte_Seminar_B_Team_1.xlsx", sheet = "VR_Meeting")
 
-zoom_group1 <- read_excel("Daten/Fragebogendaten_Mittelwerte_Seminar_B_Team_1.xlsx", sheet = "Zoom-Meeting")
+zoom_self <- read_excel("Daten/Fragebogendaten_Mittelwerte_Seminar_B_Team_1.xlsx", sheet = "Zoom-Meeting")
 
 vr_external <- read_excel("Daten/Entitativity _VR_Team 1.xlsx", sheet = "VR_Meeting_Gesamt")
 
@@ -22,9 +22,9 @@ zoom_external <- read_excel("Daten/Entitativity _Zoom_Team 1.xlsx", sheet = "Zoo
 
 # Getting clean data
 
-clean_vr_group1<-clean_data_self(vr_group1)
+clean_vr_self<-clean_data_self(vr_self)
 
-clean_zoom_group1<-clean_data_self(zoom_group1)
+clean_zoom_self<-clean_data_self(zoom_self)
 
 clean_vr_external <- clean_data_external(vr_external)
 
@@ -36,11 +36,11 @@ vr_interact<- clean_data_interact("Daten/Ausgewertet_Sem B_Team 6_VR.xls")
 
 # Calculating ES for phase one vs phase two
 # Calculate Cohen's d for clean_vr_group1
-cohen_d_vr <- calculate_cohens_d(clean_vr_group1, 9, 10)
+cohen_d_vr <- calculate_cohens_d(clean_vr_self, 9, 10)
 cat("Cohen's d for VR data:", cohen_d_vr, "\n")
 
 # Calculate Cohen's d for clean_zoom_group1
-cohen_d_zoom <- calculate_cohens_d(clean_zoom_group1, 9, 10)
+cohen_d_zoom <- calculate_cohens_d(clean_zoom_self, 9, 10)
 cat("Cohen's d for Zoom data:", cohen_d_zoom, "\n")
 
 # Testing the external Ratings for normal distribution
@@ -57,8 +57,9 @@ print(shapiro_test_vr)
 # Ratings: Self vs. External: VR
 rows_self <- 5:8  # Rows containing self-ratings in clean_..._group1
 rows_external <- 1:4  # Rows containing external ratings in clean_..._external
-perform_paired_t_tests(clean_vr_group1, clean_vr_external, rows_self, rows_external)
+perform_paired_t_tests(clean_vr_self, clean_vr_external, rows_self, rows_external)
+
 
 
 # Ratings: Self vs. External: Zoom
-results_zoom <- perform_paired_t_tests(clean_zoom_group1, clean_zoom_external, rows_self, rows_external)
+perform_paired_t_tests(clean_zoom_self, clean_zoom_external, rows_self, rows_external)
