@@ -54,19 +54,11 @@ print(shapiro_test_zoom)
 print("Shapiro-Wilk test results for VR data:")
 print(shapiro_test_vr)
 
-str(clean_vr_external)
-
-
 # Ratings: Self vs. External: VR
-rows_self <- 5:8  # Rows containing self-ratings in clean_vr_group1
-rows_external <- 1:4  # Rows containing external ratings in clean_vr_external
-results_vr <- perform_paired_t_tests(clean_vr_group1, clean_vr_external, rows_self, rows_external)
-print("Paired t-test results for VR data:")
-print(results_vr)
+rows_self <- 5:8  # Rows containing self-ratings in clean_..._group1
+rows_external <- 1:4  # Rows containing external ratings in clean_..._external
+perform_paired_t_tests(clean_vr_group1, clean_vr_external, rows_self, rows_external)
 
 
 # Ratings: Self vs. External: Zoom
-
 results_zoom <- perform_paired_t_tests(clean_zoom_group1, clean_zoom_external, rows_self, rows_external)
-print("Paired t-test results for Zoom data:")
-print(results_zoom)

@@ -120,10 +120,10 @@ perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self
     difference <- mean_self[i] - mean_external[i]
     
     # Calculate the standard deviation of the differences
-    SD_d <- sqrt((sd_self[i]^2 + sd_external[i]^2) / length(rows_external))
+    SD_d <- sqrt((sd_self[i]^2 + sd_external[i]^2)/3)
     
     # Calculate the standard error of the mean difference
-    SE_d <- SD_d / sqrt(length(rows_external))
+    SE_d <- SD_d / sqrt(3)
     
     # Calculate the t-statistic
     t_statistic <- difference / SE_d
