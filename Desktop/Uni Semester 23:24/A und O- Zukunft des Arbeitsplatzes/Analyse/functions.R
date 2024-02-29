@@ -1,37 +1,68 @@
-clean_data_group1 <- function(df) {
-  # Rename columns
-  colnames(df) <- c("variable", "mean_gesamt", "SD", "Skala")
-  
-  # Remove rows with missing values in the 'mean' column
-  df <- df[complete.cases(df$mean_gesamt), ]
-  
-  # Remove the first row
-  df <- df[-1,]
-  
-  # Convert 'mean' and 'SD' columns to numeric
-  df$mean_gesamt <- as.numeric(as.character(df$mean_gesamt))
-  df$SD <- as.numeric(as.character(df$SD))
-  
-  # Return the cleaned dataframe
-  return(df)
+clean_data_self <- function(df) {
+  if (is.data.frame(df)) {
+    # Single dataframe provided
+    # Rename columns
+    colnames(df) <- c("variable", "mean_gesamt", "SD", "Skala")
+    
+    # Remove rows with missing values in the 'mean' column
+    df <- df[complete.cases(df$mean_gesamt), ]
+    
+    # Remove the first row
+    df <- df[-1,]
+    
+    # Convert 'mean' and 'SD' columns to numeric
+    df$mean_gesamt <- as.numeric(as.character(df$mean_gesamt))
+    df$SD <- as.numeric(as.character(df$SD))
+    
+    return(df)
+  } else if (is.list(df)) {
+    # List of dataframes provided
+    cleaned_data <- list()  # Initialize an empty list to store cleaned dataframes
+    
+    # Iterate over each dataframe in the list
+    for (i in seq_along(df)) {
+      df_i <- df[[i]]  # Get the dataframe at index i
+      
+      # Rename columns
+      colnames(df_i) <- c("variable", "mean_gesamt", "SD", "Skala")
+      
+      # Remove rows with missing values in the 'mean' column
+      df_i <- df_i[complete.cases(df_i$mean_gesamt), ]
+      
+      # Remove the first row
+      df_i <- df_i[-1,]
+      
+      # Convert 'mean' and 'SD' columns to numeric
+      df_i$mean_gesamt <- as.numeric(as.character(df_i$mean_gesamt))
+      df_i$SD <- as.numeric(as.character(df_i$SD))
+      
+      # Append the cleaned dataframe to the list
+      cleaned_data[[i]] <- df_i
+    }
+    
+    # Combine all cleaned dataframes into a single dataframe
+    combined_df <- do.call(rbind, cleaned_data)
+    
+    return(combined_df)
+  } else {
+    stop("Input must be either a dataframe or a list of dataframes")
+  }
 }
+
+
 
 clean_data_external <- function(df) {
   # Rename columns
-  colnames(df) <- c("variable", "mean_erste_5_minuten", "mean_zweite_5_minuten", "mean_dritte_5_minuten", "mean_vierte_5_minuten", "mean_gesamt", "SD")
+  colnames(df) <- c("Rating_Type", "mean_first_5_minutes", "mean_second_5_minutes", "mean_third_5_minutes", "mean_fourth_5_minutes", "mean_total", "SD")
   
-  # Remove rows with missing values in the 'mean_gesamt' column
-  df <- df[complete.cases(df$mean_gesamt), ]
-  
-  # Remove the first row
-  df <- df[-1,]
+  # Remove rows with missing values in the 'mean_total' column
+  df <- df[complete.cases(df$mean_total), ]
   
   # Convert 'mean' and 'SD' columns to numeric
-  df$mean_gesamt <- as.numeric(as.character(df$mean_gesamt))
-  df$SD <- as.numeric(as.character(df$SD))
+  df[, 2:7] <- lapply(df[, 2:7], as.numeric)
   
-  # Assign specific names to the "variable" column
-  df$variable <- c("Entitativität", "Ähnlichkeit", "Interaktivität", "Geteilte Ziele")
+  # Assign specific names to the "Rating_Type" column
+  df$Rating_Type <- c("Entitativity", "Similarity", "Interactivity", "Shared Goals")
   
   return(df)
 }
@@ -39,8 +70,6 @@ clean_data_external <- function(df) {
 # Load required library
 library(readxl)
 
-# Load required libraries
-library(readxl)
 
 clean_data_interact <- function(file_path) {
   # Read all sheets from the Excel file
@@ -63,36 +92,99 @@ clean_data_interact <- function(file_path) {
   return(combined_data)
 }
 
-# Function to create a bar plot
-plot_mean_gesamt <- function(df1, df2, df1_name, df2_name, variable_columns = c("Entitativität", "Ähnlichkeit", "Interaktivität", "Geteilte Ziele")) {
-  # Extract only the necessary columns from data frames
-  df1_subset <- df1[df1$variable %in% variable_columns, ]
-  df2_subset <- df2[df2$variable %in% variable_columns, ]
+# Function to do t tests
+perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self, rows_external, alpha = 0.05) {
+  # Extract variable names
+  variable_names_self <- dataframe_self[rows_self, "variable"]
+  variable_names_external <- dataframe_external[rows_external, "variable"]
   
-  # Merge data frames for plotting
-  merged_data <- merge(df1_subset, df2_subset, by = "variable")
+  # Extract mean and standard deviation values from dataframe_self
+  mean_self <- dataframe_self[rows_self, "mean_gesamt"]
+  sd_self <- dataframe_self[rows_self, "SD"]
   
-  # Create a matrix for barplot
-  bar_matrix <- matrix(
-    c(merged_data$mean_gesamt.x, merged_data$mean_gesamt.y),
-    nrow = 2, byrow = TRUE,
-    dimnames = list(c(df1_name, df2_name), merged_data$variable)
-  )
+  # Extract mean and standard deviation values from dataframe_external
+  mean_external <- dataframe_external[rows_external, "mean_gesamt"]
+  sd_external <- dataframe_external[rows_external, "SD"]
   
-  # Bar plot
-  barplot(
-    bar_matrix,
-    col = c("blue", "red"),  # Adjust colors as needed
-    beside = TRUE,
-    ylim = c(0, 7),  # Set y-axis limits to 0-7
-    xlab = "Variables",
-    ylab = "Mean Gesamt",
-    main = paste("Mean of", df1_name, "and", df2_name)  # Add a main title
-  )
+  # Initialize table to store results
+  results_table <- data.frame(Category = character(length(rows_self)),
+                              Variable = character(length(rows_self)),
+                              T_statistic = numeric(length(rows_self)),
+                              Degrees_of_freedom = numeric(length(rows_self)),
+                              Critical_t_value = numeric(length(rows_self)),
+                              Hypothesis_conclusion = character(length(rows_self)),
+                              P_value = numeric(length(rows_self)))
   
-  # Add legend with smaller text size (cex)
-  legend("topright", legend = c(df1_name, df2_name), fill = c("blue", "red"), cex = 0.5)
+  for (i in 1:length(rows_self)) {
+    # Calculate the differences between self-ratings and external ratings
+    difference <- mean_self[i] - mean_external[i]
+    
+    # Calculate the standard deviation of the differences
+    SD_d <- sqrt((sd_self[i]^2 + sd_external[i]^2) / length(rows_external))
+    
+    # Calculate the standard error of the mean difference
+    SE_d <- SD_d / sqrt(length(rows_external))
+    
+    # Calculate the t-statistic
+    t_statistic <- difference / SE_d
+    
+    # Determine the degrees of freedom
+    df <- 2
+    
+    # Find the critical t-value
+    critical_t <- qt(1 - alpha / 2, df)
+    
+    # Compare the t-statistic to the critical t-value
+    if (abs(t_statistic) > critical_t) {
+      hypothesis <- "Reject null hypothesis"
+    } else {
+      hypothesis <- "Fail to reject null hypothesis"
+    }
+    
+    # Calculate the p-value
+    p_value <- 2 * pt(abs(t_statistic), df, lower.tail = FALSE)
+    
+    # Store the results in the table
+    results_table[i, ] <- list(Category = rownames(dataframe_self)[rows_self[i]],
+                               Variable = variable_names_self[i],
+                               T_statistic = t_statistic,
+                               Degrees_of_freedom = df,
+                               Critical_t_value = critical_t,
+                               Hypothesis_conclusion = hypothesis,
+                               P_value = p_value)
+  }
+  
+  # Print the results table
+  print(knitr::kable(results_table, format = "markdown"))
 }
 
+
+# Cohens D
+
+calculate_cohens_d <- function(dataframe, phase1_row_index, phase2_row_index) {
+  # Extract mean and standard deviation for Phase one and Phase two
+  mean_phase1 <- dataframe$mean_gesamt[phase1_row_index]
+  mean_phase2 <- dataframe$mean_gesamt[phase2_row_index]
+  sd_phase1 <- dataframe$SD[phase1_row_index]
+  sd_phase2 <- dataframe$SD[phase2_row_index]
+  
+  # Calculate Cohen's d
+  cohen_d <- (mean_phase1 - mean_phase2) / sqrt(((sd_phase1^2) + (sd_phase2^2)) / 2)
+  
+  return(cohen_d)
+}
+
+# Shapiro Test 
+calculate_shapiro_test <- function(dataframe) {
+  category_names <- dataframe$variable  # Extract category names from the 'variable' column
+  result <- lapply(1:nrow(dataframe), function(i) {
+    row <- as.numeric(dataframe[i, 2:5])
+    shapiro_result <- shapiro.test(row)
+    return(data.frame(Category = category_names[i],
+                      p_value = shapiro_result$p.value,
+                      W_value = shapiro_result$statistic))
+  })
+  return(do.call(rbind, result))
+}
 
 

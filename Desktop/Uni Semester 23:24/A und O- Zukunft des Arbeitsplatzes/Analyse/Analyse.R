@@ -1,9 +1,15 @@
-rm( )
+rm(list = ls())
 
 # Getting data
 source("functions.R")
 
 install.packages("readxl")
+install.packages("tidyr")
+install.packages("dplyr")
+install.packages("broom")
+library(dplyr)
+library(tidyr)
+library(broom)
 library("readxl")
 
 vr_group1 <- read_excel("Daten/Fragebogendaten_Mittelwerte_Seminar_B_Team_1.xlsx", sheet = "VR_Meeting")
@@ -14,24 +20,53 @@ vr_external <- read_excel("Daten/Entitativity _VR_Team 1.xlsx", sheet = "VR_Meet
 
 zoom_external <- read_excel("Daten/Entitativity _Zoom_Team 1.xlsx", sheet = "Zoom_Meeting_Gesamt")
 
-zoom_interact <- clean_data_interact("Daten/Ausgewertet_Sem B_Team 6_Zoom.xls")
+# Getting clean data
 
-# Cleaning Data up
+clean_vr_group1<-clean_data_self(vr_group1)
 
-clean_vr_group1<-clean_data_group1(vr_group1)
-
-clean_zoom_group1<-clean_data_group1(zoom_group1)
+clean_zoom_group1<-clean_data_self(zoom_group1)
 
 clean_vr_external <- clean_data_external(vr_external)
 
-clean_zoom_external <- clean_data_external(zoom_external)
+clean_zoom_external<- clean_data_external(zoom_external)
 
-# Ratings: External: Zoom vs. VR
+zoom_interact <- clean_data_interact("Daten/Ausgewertet_Sem B_Team 6_Zoom.xls")
 
-plot_mean_gesamt(clean_zoom_external, clean_vr_external, "Zoom external", "VR external ratings")
+vr_interact<- clean_data_interact("Daten/Ausgewertet_Sem B_Team 6_VR.xls")
 
-plot_mean_gesamt(clean_zoom_group1, clean_vr_group1,"Zoom internal", "VR internal ratings" )
+# Calculating ES for phase one vs phase two
+# Calculate Cohen's d for clean_vr_group1
+cohen_d_vr <- calculate_cohens_d(clean_vr_group1, 9, 10)
+cat("Cohen's d for VR data:", cohen_d_vr, "\n")
+
+# Calculate Cohen's d for clean_zoom_group1
+cohen_d_zoom <- calculate_cohens_d(clean_zoom_group1, 9, 10)
+cat("Cohen's d for Zoom data:", cohen_d_zoom, "\n")
+
+# Testing the external Ratings for normal distribution
+## Apply the function to clean_zoom_external and clean_vr_external
+shapiro_test_zoom <- calculate_shapiro_test(clean_zoom_external)
+shapiro_test_vr <- calculate_shapiro_test(clean_vr_external)
+
+## Output the results
+print("Shapiro-Wilk test results for Zoom data:")
+print(shapiro_test_zoom)
+print("Shapiro-Wilk test results for VR data:")
+print(shapiro_test_vr)
+
+str(clean_vr_external)
 
 
+# Ratings: Self vs. External: VR
+rows_self <- 5:8  # Rows containing self-ratings in clean_vr_group1
+rows_external <- 1:4  # Rows containing external ratings in clean_vr_external
+results_vr <- perform_paired_t_tests(clean_vr_group1, clean_vr_external, rows_self, rows_external)
+print("Paired t-test results for VR data:")
+print(results_vr)
 
 
+# Ratings: Self vs. External: Zoom
+
+results_zoom <- perform_paired_t_tests(clean_zoom_group1, clean_zoom_external, rows_self, rows_external)
+print("Paired t-test results for Zoom data:")
+print(results_zoom)
