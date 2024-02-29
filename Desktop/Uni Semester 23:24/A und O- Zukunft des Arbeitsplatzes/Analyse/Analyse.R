@@ -3,15 +3,6 @@ rm(list = ls())
 # Getting data
 source("functions.R")
 
-install.packages("readxl")
-install.packages("tidyr")
-install.packages("dplyr")
-install.packages("broom")
-library(dplyr)
-library(tidyr)
-library(broom)
-library("readxl")
-
 vr_self <- read_excel("Daten/Fragebogendaten_Mittelwerte_Seminar_B_Team_1.xlsx", sheet = "VR_Meeting")
 
 zoom_self <- read_excel("Daten/Fragebogendaten_Mittelwerte_Seminar_B_Team_1.xlsx", sheet = "Zoom-Meeting")
@@ -54,12 +45,20 @@ print(shapiro_test_zoom)
 print("Shapiro-Wilk test results for VR data:")
 print(shapiro_test_vr)
 
-# Ratings: Self vs. External: VR
+
+# T-Sum Test: 
+# Ratings: Self vs. External: Zoom
+results_zoom <- perform_tsum_test(clean_zoom_external, clean_zoom_self, indices_external, indices_self)
+
+## Ratings: Self vs. External: VR
+results_vr <-   perform_tsum_test(clean_vr_external, clean_vr_self, indices_external, indices_self)
+
+
+
+# Alternative way
 rows_self <- 5:8  # Rows containing self-ratings in clean_..._group1
 rows_external <- 1:4  # Rows containing external ratings in clean_..._external
 perform_paired_t_tests(clean_vr_self, clean_vr_external, rows_self, rows_external)
-
-
-
-# Ratings: Self vs. External: Zoom
 perform_paired_t_tests(clean_zoom_self, clean_zoom_external, rows_self, rows_external)
+
+

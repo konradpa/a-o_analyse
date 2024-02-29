@@ -14,38 +14,7 @@ clean_data_self <- function(df) {
     df$mean_gesamt <- as.numeric(as.character(df$mean_gesamt))
     df$SD <- as.numeric(as.character(df$SD))
     
-    return(df)
-  } else if (is.list(df)) {
-    # List of dataframes provided
-    cleaned_data <- list()  # Initialize an empty list to store cleaned dataframes
-    
-    # Iterate over each dataframe in the list
-    for (i in seq_along(df)) {
-      df_i <- df[[i]]  # Get the dataframe at index i
-      
-      # Rename columns
-      colnames(df_i) <- c("variable", "mean_gesamt", "SD", "Skala")
-      
-      # Remove rows with missing values in the 'mean' column
-      df_i <- df_i[complete.cases(df_i$mean_gesamt), ]
-      
-      # Remove the first row
-      df_i <- df_i[-1,]
-      
-      # Convert 'mean' and 'SD' columns to numeric
-      df_i$mean_gesamt <- as.numeric(as.character(df_i$mean_gesamt))
-      df_i$SD <- as.numeric(as.character(df_i$SD))
-      
-      # Append the cleaned dataframe to the list
-      cleaned_data[[i]] <- df_i
-    }
-    
-    # Combine all cleaned dataframes into a single dataframe
-    combined_df <- do.call(rbind, cleaned_data)
-    
-    return(combined_df)
-  } else {
-    stop("Input must be either a dataframe or a list of dataframes")
+    return(as.data.frame(df))
   }
 }
 
@@ -125,35 +94,23 @@ perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self
     sd_self <- as.numeric(dataframe_self[rows_self[i], "SD"]) # Ensure numeric type
     sd_external <- as.numeric(dataframe_external[rows_external[i], "SD"]) # Ensure numeric type
     
-    # Print extracted data
-    print(variable_name)
-    print(mean_self)
-    print(mean_external)
-    print(sd_self)
-    print(sd_external)
-    
     # Calculate the difference in means
     difference <- mean_self - mean_external
-    print(difference)
     
     # Calculate the standard deviation of the differences 
     SD_d<-sqrt((sd_self^2 + sd_external^2) / 3)
-    print(SD_d)
     
     # Calculate the standard error of the mean difference
     SE_d <- SD_d / sqrt(3)
-    print(SE_d)
     
     # Calculate the t-statistic
     t_statistic <- difference / SE_d
-    print(t_statistic)
     
     # Determine the degrees of freedom
     df <- 2
     
     # Find the critical t-value
     critical_t <- qt(1 - alpha / 2, df)
-    print(critical_t)
     
     # Compare the t-statistic to the critical t-value
     if (abs(t_statistic) > critical_t) {
@@ -164,7 +121,6 @@ perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self
     
     # Calculate the p-value
     p_value <- 2 * pt(abs(t_statistic), df, lower.tail = FALSE)
-    print(p_value)
     
     # Store the results in the table
     results_table[i, ] <- list(Category = rownames(dataframe_self)[rows_self[i]],
@@ -212,3 +168,35 @@ calculate_shapiro_test <- function(dataframe) {
 }
 
 
+# T- Sum
+perform_tsum_test <- function(external_df, self_df, rows_external, rows_self) {
+  # Initialize a list to store the results
+  t_results_list <- list()
+  
+  # Iterate through the indices
+  for (i in 1:length(rows_external)) {
+    # Extract the indices for the current combination
+    idx_external <- rows_external[i]
+    idx_self <- rows_self[i]
+    
+    # Perform tsum.test for the current combination of rows
+    t_results <- tsum.test(
+      mean.x = external_df[idx_external, 6],
+      s.x = external_df[idx_external, 7],
+      n.x = 3,
+      mean.y = self_df[idx_self, 2],
+      s.y = self_df[idx_self, 3],
+      n.y = 3,
+      alternative = "two.sided",
+      mu = 0,
+      var.equal = FALSE,
+      conf.level = 0.95
+    )
+    
+    # Store the results in the list
+    t_results_list[[paste0("t_results_", idx_external, "_", idx_self)]] <- t_results
+  }
+  
+  # Return the list of results
+  return(t_results_list)
+}
