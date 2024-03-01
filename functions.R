@@ -1,4 +1,4 @@
-# loading packets
+# loading packages
 
 library(readxl)
 library(BSDA)
