@@ -1,0 +1,3 @@
+# Analysis of data for Course: Zukunft des Arbeitsplatzes A + O, Universität Hamburg WiSe 23/24
+
+Feel free to use, modify...
