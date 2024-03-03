@@ -1,10 +1,3 @@
-# loading packages
-
-library(readxl)
-library(BSDA)
-
-#CLeaning Functions
-
 clean_data_self <- function(df) {
   if (is.data.frame(df)) {
     # Single dataframe provided
@@ -24,6 +17,8 @@ clean_data_self <- function(df) {
     return(as.data.frame(df))
   }
 }
+
+
 
 clean_data_external <- function(df) {
   # Rename columns
@@ -48,6 +43,11 @@ clean_data_external <- function(df) {
   
 }
 
+
+# Load required library
+library(readxl)
+
+
 clean_data_interact <- function(file_path) {
   # Read all sheets from the Excel file
   sheets <- excel_sheets(file_path)
@@ -69,69 +69,7 @@ clean_data_interact <- function(file_path) {
   return(combined_data)
 }
 
-# Cohens D
-
-calculate_cohens_d <- function(dataframe, phase1_row_index, phase2_row_index) {
-  # Extract mean and standard deviation for Phase one and Phase two
-  mean_phase1 <- dataframe$mean_gesamt[phase1_row_index]
-  mean_phase2 <- dataframe$mean_gesamt[phase2_row_index]
-  sd_phase1 <- dataframe$SD[phase1_row_index]
-  sd_phase2 <- dataframe$SD[phase2_row_index]
-  
-  # Calculate Cohen's d
-  cohen_d <- (mean_phase1 - mean_phase2) / sqrt(((sd_phase1^2) + (sd_phase2^2)) / 2)
-  
-  return(cohen_d)
-}
-
-# Shapiro Test 
-calculate_shapiro_test <- function(dataframe) {
-  category_names <- dataframe$variable  # Extract category names from the 'variable' column
-  result <- lapply(1:nrow(dataframe), function(i) {
-    row <- as.numeric(dataframe[i, 2:5])
-    shapiro_result <- shapiro.test(row)
-    return(data.frame(Category = category_names[i],
-                      p_value = shapiro_result$p.value,
-                      W_value = shapiro_result$statistic))
-  })
-  return(do.call(rbind, result))
-}
-
-
-# T- Sum Test
-perform_tsum_test <- function(external_df, self_df, rows_external, rows_self) {
-  # Initialize a list to store the results
-  t_results_list <- list()
-  
-  # Iterate through the indices
-  for (i in 1:length(rows_external)) {
-    # Extract the indices for the current combination
-    idx_external <- rows_external[i]
-    idx_self <- rows_self[i]
-    
-    # Perform tsum.test for the current combination of rows
-    t_results <- tsum.test(
-      mean.x = external_df[idx_external, 6],
-      s.x = external_df[idx_external, 7],
-      n.x = 3,
-      mean.y = self_df[idx_self, 2],
-      s.y = self_df[idx_self, 3],
-      n.y = 3,
-      alternative = "two.sided",
-      mu = 0,
-      var.equal = FALSE,
-      conf.level = 0.95
-    )
-    
-    # Store the results in the list
-    t_results_list[[paste0("t_results_", idx_external, "_", idx_self)]] <- t_results
-  }
-  
-  # Return the list of results
-  return(t_results_list)
-}
-
-## Alternative Way
+# Function to do t tests
 perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self, rows_external, alpha = 0.05) {
   # Check if lengths of rows_self and rows_external are equal
   if (length(rows_self) != length(rows_external)) {
@@ -198,3 +136,116 @@ perform_paired_t_tests <- function(dataframe_self, dataframe_external, rows_self
   return(results_table)
 }
 
+
+
+
+# Cohens D
+
+calculate_cohens_d <- function(dataframe, phase1_row_index, phase2_row_index) {
+  # Extract mean and standard deviation for Phase one and Phase two
+  mean_phase1 <- dataframe$mean_gesamt[phase1_row_index]
+  mean_phase2 <- dataframe$mean_gesamt[phase2_row_index]
+  sd_phase1 <- dataframe$SD[phase1_row_index]
+  sd_phase2 <- dataframe$SD[phase2_row_index]
+  
+  # Calculate Cohen's d
+  cohen_d <- (mean_phase1 - mean_phase2) / sqrt(((sd_phase1^2) + (sd_phase2^2)) / 2)
+  
+  return(cohen_d)
+}
+
+calculate_cohens_d_multiple <- function(df1, df2, vars) {
+  d_values <- numeric(length(vars))
+  
+  for (i in 1:length(vars)) {
+    cat("Calculating Cohen's d for variable:", vars[i], "\n")
+    
+    # Extract the relevant rows for the variable in df1
+    df1_var <- df1[df1$variable == vars[i], ]
+    
+    # Extract the relevant rows for the variable in df2
+    df2_var <- df2[df2$variable == vars[i], ]
+    
+    # Check if there's data available for this variable in both data frames
+    if (nrow(df1_var) == 0 || nrow(df2_var) == 0) {
+      warning(paste("No data available for variable", vars[i]))
+      d_values[i] <- NA
+    } else {
+      # Get mean and standard deviation for df1
+      mean_x <- df1_var$mean_gesamt
+      sd_x <- df1_var$SD
+      
+      # Get mean and standard deviation for df2
+      mean_y <- df2_var$mean_gesamt
+      sd_y <- df2_var$SD
+      
+      cat("Mean (df1):", mean_x, "\n")
+      cat("Standard Deviation (df1):", sd_x, "\n")
+      cat("Mean (df2):", mean_y, "\n")
+      cat("Standard Deviation (df2):", sd_y, "\n")
+      
+      # Calculate Cohen's d without pooling standard deviations
+      d_values[i] <- abs(mean_x - mean_y) / sqrt((sd_x^2 + sd_y^2) / 2)
+      
+      cat("Cohen's d:", d_values[i], "\n")
+    }
+    cat("\n")
+  }
+  
+  result_df <- data.frame(Variable = vars, Cohen_d = d_values)
+  return(result_df)
+}
+
+
+# Example usage:
+# Assuming you have two data frames df1 and df2, and vars contains the names of the variables you want to compare
+# df1 <- data.frame(variable = c("Entitativität", "Ähnlichkeit", "Interaktivität", "geteilte ziele", "Irrelevant1", "Irrelevant2"),
+#                   mean_gesamt = c(1, 2, 3, 4, 5, 6), SD = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6))
+# df2 <- data.frame(variable = c("Entitativität", "Ähnlichkeit",
+
+
+# Shapiro Test 
+calculate_shapiro_test <- function(dataframe) {
+  category_names <- dataframe$variable  # Extract category names from the 'variable' column
+  result <- lapply(1:nrow(dataframe), function(i) {
+    row <- as.numeric(dataframe[i, 2:5])
+    shapiro_result <- shapiro.test(row)
+    return(data.frame(Category = category_names[i],
+                      p_value = shapiro_result$p.value,
+                      W_value = shapiro_result$statistic))
+  })
+  return(do.call(rbind, result))
+}
+
+
+# T- Sum
+perform_tsum_test <- function(external_df, self_df, rows_external, rows_self) {
+  # Initialize a list to store the results
+  t_results_list <- list()
+  
+  # Iterate through the indices
+  for (i in 1:length(rows_external)) {
+    # Extract the indices for the current combination
+    idx_external <- rows_external[i]
+    idx_self <- rows_self[i]
+    
+    # Perform tsum.test for the current combination of rows
+    t_results <- tsum.test(
+      mean.x = external_df[idx_external, 6],
+      s.x = external_df[idx_external, 7],
+      n.x = 3,
+      mean.y = self_df[idx_self, 2],
+      s.y = self_df[idx_self, 3],
+      n.y = 3,
+      alternative = "two.sided",
+      mu = 0,
+      var.equal = FALSE,
+      conf.level = 0.95
+    )
+    
+    # Store the results in the list
+    t_results_list[[paste0("t_results_", idx_external, "_", idx_self)]] <- t_results
+  }
+  
+  # Return the list of results
+  return(t_results_list)
